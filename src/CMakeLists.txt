@@ -11,10 +11,10 @@ target_include_directories(socket_link PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/networ
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../HE/seal")
 find_package(SEAL 4.1 REQUIRED CONFIG)
 
-# netpeer server
-add_executable(netpeer network/netpeer.cpp)
-target_include_directories(netpeer PRIVATE "${CMAKE_SOURCE_DIR}/../HE/seal/include")
-target_link_libraries(netpeer SEAL::seal)
+# # netpeer server
+# add_executable(netpeer network/netpeer.cpp)
+# target_include_directories(netpeer PRIVATE "${CMAKE_SOURCE_DIR}/../HE/seal/include")
+# target_link_libraries(netpeer SEAL::seal)
 
 # # source file
 # add_executable(main main.cpp 
