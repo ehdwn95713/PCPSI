@@ -305,7 +305,21 @@ int main(int argc, char** argv) {
 
 
 
+    // ==== 통신 통계 출력 ====
+    double mb_c2s = wire.bytes_sent() / (1024.0 * 1024.0);
+    double mb_s2c = wire.bytes_recv() / (1024.0 * 1024.0);
 
+    double ms_send = wire.send_time_us() / 1000.0;
+    double ms_recv = wire.recv_time_us() / 1000.0;
+    double ms_comm_total = ms_send + ms_recv;
+
+    std::cout << "\n[client] bytes client->server: "
+              << wire.bytes_sent() << " B (" << mb_c2s << " MB)\n";
+    std::cout << "[client] bytes server->client: "
+              << wire.bytes_recv() << " B (" << mb_s2c << " MB)\n";
+    std::cout << "[client] time send: " << ms_send << " ms, "
+              << "recv: " << ms_recv << " ms, "
+              << "total comm time: " << ms_comm_total << " ms\n";
 
 
     return 0;

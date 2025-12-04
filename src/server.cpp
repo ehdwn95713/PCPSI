@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     std::cout << "Client connected.\n";
 
     // ------------------ server data 생성/로드 ------------------
-    size_t server_size = 1 << 16;
+    size_t server_size = 1 << 20;
     std::string server_path = "data/data_file/server_data.txt";
 
     if (!std::filesystem::exists(server_path)) {
@@ -180,6 +180,7 @@ int main(int argc, char** argv) {
         auto us_comp = std::chrono::duration_cast<std::chrono::microseconds>(
                         end_comp - start_comp
                     ).count();
+        double ms_comp = us_comp / 1000.0;
         total_us_comp += us_comp;
 
         // ---- 결과를 클라이언트에 전송 ----
@@ -193,8 +194,34 @@ int main(int argc, char** argv) {
 
         std::cout << "[server] hash " << h
                 << " compare_results = " << compare_results.size()
-                << ", comp time = " << us_comp << " us\n";
+                << ", comp time = " << ms_comp << " ms\n";
     }
+    
+    double ms_gen_sim = us_gen_sim / 1000.0;
+
+    std::cout << "\n[server] SIMPLE table time = "
+          << ms_gen_sim
+          << std::endl;
+
+    double total_ms_comp = total_us_comp / 1000.0;
+    std::cout << "[server] TOTAL compare time = "
+          << total_ms_comp << "\n";
+
+    double mb_s2c = wire.bytes_sent() / (1024.0 * 1024.0);
+    double mb_c2s = wire.bytes_recv() / (1024.0 * 1024.0);
+
+    double ms_send = wire.send_time_us() / 1000.0;
+    double ms_recv = wire.recv_time_us() / 1000.0;
+    double ms_comm_total = ms_send + ms_recv;
+
+    std::cout << "\n[server] bytes server->client: "
+              << wire.bytes_sent() << " B (" << mb_s2c << " MB)\n";
+    std::cout << "[server] bytes client->server: "
+              << wire.bytes_recv() << " B (" << mb_c2s << " MB)\n";
+    std::cout << "[server] time send: " << ms_send << " ms, "
+              << "recv: " << ms_recv << " ms, "
+              << "total comm time: " << ms_comm_total << " ms\n";
+
 
 
     return 0;

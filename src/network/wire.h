@@ -2,6 +2,7 @@
 #include <string>
 #include <cstdint>
 #include <stdexcept>
+#include <chrono>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -18,6 +19,12 @@ class Wire {
         }
         return ret;
     }
+        // ==== communication check ====
+    using clock = std::chrono::high_resolution_clock;
+    std::uint64_t bytes_sent_ = 0;
+    std::uint64_t bytes_recv_ = 0;
+    std::uint64_t us_send_    = 0;  // send_raw 누적 시간 (microsec)
+    std::uint64_t us_recv_    = 0;  // recv_raw 누적 시간 (microsec)
 
 public:
     // ==== 클라이언트용: host, port 받아서 connect ====
@@ -59,23 +66,47 @@ public:
         }
     }
 
+    std::uint64_t bytes_sent() const { return bytes_sent_; }
+    std::uint64_t bytes_recv() const { return bytes_recv_; }
+    std::uint64_t send_time_us() const { return us_send_; }
+    std::uint64_t recv_time_us() const { return us_recv_; }
+
+
+
     void send_raw(const uint8_t* data, size_t len) {
+        
+        auto t0 = clock::now();
+
         size_t sent = 0;
         while (sent < len) {
             ssize_t r = ::send(sock_, data + sent, len - sent, 0);
             if (r <= 0) throw std::runtime_error("send failed");
             sent += static_cast<size_t>(r);
+            bytes_sent_ += static_cast<std::uint64_t>(r);
         }
+        
+        auto t1 = clock::now();
+        us_send_ += std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
     }
 
     void recv_raw(uint8_t* data, size_t len) {
+
+        auto t0 = clock::now();
+
         size_t recvd = 0;
         while (recvd < len) {
             ssize_t r = ::recv(sock_, data + recvd, len - recvd, 0);
             if (r <= 0) throw std::runtime_error("recv failed");
             recvd += static_cast<size_t>(r);
+            bytes_recv_ += static_cast<std::uint64_t>(r);
         }
+
+        auto t1 = clock::now();
+        us_recv_ += std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
     }
+
+
+
 };
 
 
