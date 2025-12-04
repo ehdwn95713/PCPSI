@@ -105,3 +105,44 @@ target_link_libraries(psi_server
     SEAL::seal
     socket_link
 )
+
+
+# ============================================================
+# [NEW] psi_client_1d : 실제 클라이언트 (client_1d.cpp)
+# ============================================================
+add_executable(psi_client_1d
+    client_1d.cpp
+    seal_util/examples.cpp
+    seal_util/batching.cpp
+    data/data_generator.cpp
+    data/data_reader.cpp
+    hashing/cuckoo.cpp
+    hashing/simple.cpp
+    hashing/p_cuckoo.cpp
+)
+
+target_include_directories(psi_client_1d PRIVATE "${CMAKE_SOURCE_DIR}/../HE/seal/include")
+target_link_libraries(psi_client_1d
+    SEAL::seal
+    socket_link             # Wire는 POSIX socket 쓰지만, 필요 없으면 이 줄 삭제 가능
+)
+
+# ============================================================
+# [NEW] psi_server_1d : 실제 서버 (server_1d.cpp)
+# ============================================================
+add_executable(psi_server_1d
+    server_1d.cpp
+    seal_util/examples.cpp
+    seal_util/batching.cpp
+    data/data_generator.cpp
+    data/data_reader.cpp
+    hashing/cuckoo.cpp
+    hashing/simple.cpp
+    hashing/p_cuckoo.cpp
+)
+
+target_include_directories(psi_server_1d PRIVATE "${CMAKE_SOURCE_DIR}/../HE/seal/include")
+target_link_libraries(psi_server_1d
+    SEAL::seal
+    socket_link
+)
