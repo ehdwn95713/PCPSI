@@ -1,6 +1,7 @@
 #include "p_cuckoo.h"
 #include <algorithm>
 #include <iostream>
+#include <optional>
 
 PermCuckooTable::PermCuckooTable(
     size_t num_bins,
@@ -18,6 +19,7 @@ PermCuckooTable::PermCuckooTable(
         hash_names_.push_back(all_hashes[idx].name);
     }
 }
+
 
 uint64_t PermCuckooTable::universal_hash(const HashParams& p, uint32_t value) const {
     uint64_t x = value ^ p.seed;
@@ -91,16 +93,42 @@ split_per_hash_tables(const PermCuckooTable& cuckoo_table, size_t num_hash)
 }
 #include "p_cuckoo.h"
 
-// ...기존 코드...
+// // ...기존 코드...
 
-PermCuckooBuildResult build_successful_p_cuckoo_table(
+// PermCuckooBuildResult build_successful_p_cuckoo_table(
+//     size_t bins,
+//     size_t threshold,
+//     size_t r,
+//     const std::vector<std::vector<size_t>>& combs,
+//     const std::vector<HashParams>& all_hashes,
+//     const std::vector<uint32_t>& client_elems
+// ) {
+//     for (const auto& indices : combs) {
+//         PermCuckooTable table(bins, threshold, r, indices, all_hashes);
+//         if (table.insert_all(client_elems) == 0) {
+//             // 성공한 경우
+//             std::cout << "Permutation Cuckoo hashing succeeded! Used hash functions: ";
+//             for (const auto& name : table.get_used_hash_names())
+//                 std::cout << name << " ";
+//             std::cout << std::endl;
+//             return {table, indices};
+//         }
+//     }
+//     std::cerr << "No combination of hash functions succeeded for PermCuckoo.\n";
+//     exit(1); // 실패 시 프로그램 종료 (혹은 적절한 예외 처리)
+// }
+
+// 기존: PermCuckooBuildResult build_successful_p_cuckoo_table(...)
+std::optional<PermCuckooBuildResult>
+build_successful_p_cuckoo_table(
     size_t bins,
     size_t threshold,
     size_t r,
     const std::vector<std::vector<size_t>>& combs,
     const std::vector<HashParams>& all_hashes,
     const std::vector<uint32_t>& client_elems
-) {
+)
+{
     for (const auto& indices : combs) {
         PermCuckooTable table(bins, threshold, r, indices, all_hashes);
         if (table.insert_all(client_elems) == 0) {
@@ -109,13 +137,18 @@ PermCuckooBuildResult build_successful_p_cuckoo_table(
             for (const auto& name : table.get_used_hash_names())
                 std::cout << name << " ";
             std::cout << std::endl;
-            return {table, indices};
+
+            return PermCuckooBuildResult{
+                std::move(table),
+                indices
+            };
         }
     }
-    std::cerr << "No combination of hash functions succeeded for PermCuckoo.\n";
-    exit(1); // 실패 시 프로그램 종료 (혹은 적절한 예외 처리)
-}
 
+    // 이번 k_star 에서는 아무 조합도 안 됨 → 실패 표시만 하고 종료 X
+    std::cerr << "No combination of hash functions succeeded for PermCuckoo (this k*).\n";
+    return std::nullopt;
+}
 
 // #include "p_cuckoo.h"
 // #include <algorithm>

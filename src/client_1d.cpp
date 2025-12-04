@@ -12,6 +12,7 @@
 #include <iostream>
 #include "network/psi_wire.h"
 #include "seal/seal.h"
+#include <optional>
 
 using namespace std;
 using namespace seal;
@@ -66,51 +67,137 @@ int main(int argc, char** argv) {
     auto client_elems = read_uint32_file(client_path);
     std::cout << "Loaded " << client_elems.size() << " client elements\n";
 
+    // // ------------- 공통 파라미터 ----------------
+    // int    log_bins   = log_poly_mod;
+    // size_t bins       = 1 << log_bins;
+    // size_t hash_count = 3;
+    // size_t threshold  = 3000;
+    // size_t r          = 22 - log_bins;
+    
+
+    // // ------------- 서버에서 all_hashes 받기 ----------------
+    // std::vector<HashParams> all_hashes;
+
+    // // 예전: all_hashes = generate_fixed_hash_functions(bins, 20); // 임시
+
+    // all_hashes = recv_hash_params(wire);   // 서버가 보낸 20개 hash 파라미터 수신
+    // std::cout << "Received " << all_hashes.size()
+    //           << " hash functions from server.\n";
+
+
+    // // ------------- permutation-based cuckoo table 구축 -------------
+    // auto combs = get_combinations(20, hash_count);
+
+    // auto start_gen_cuc = high_resolution_clock::now();
+    // auto build_result  = build_successful_p_cuckoo_table(
+    //     bins, threshold, r, combs, all_hashes, client_elems);
+
+    // PermCuckooTable& p_cuckoo_table = build_result.table;
+    // auto end_gen_cuc = high_resolution_clock::now();
+    // auto us_gen_cuc  = duration_cast<microseconds>(end_gen_cuc - start_gen_cuc).count();
+
+    // std::vector<size_t>& chosen_indices = build_result.chosen_indices;
+
+    // std::cout << "Cuckoo table generated in " << us_gen_cuc << " us\n";
+    // std::cout << "Chosen hash indices: ";
+    // for (auto idx : chosen_indices) std::cout << idx << " ";
+    // std::cout << std::endl;
+
+    //     // 1) chosen_hashes 추출
+    // std::vector<HashParams> chosen_hashes;
+    // for (auto idx : chosen_indices)
+    //     chosen_hashes.push_back(all_hashes[idx]);
+
+    // // 2) 서버에 setup 정보 전송 (BFV parms, PK, chosen_hashes)
+    // send_seal_obj(wire, parms);          // EncryptionParameters
+    // send_seal_obj(wire, public_key);     // PublicKey
+    // send_hash_params(wire, chosen_hashes); // vector<HashParams>
+
+
     // ------------- 공통 파라미터 ----------------
     int    log_bins   = log_poly_mod;
-    size_t bins       = 1 << log_bins;
-    size_t hash_count = 3;
+    size_t bins       = 1ULL << log_bins;
+    size_t hash_count = 3;        // 최대 hash 개수 (k)
     size_t threshold  = 3000;
     size_t r          = 22 - log_bins;
-    
+
+    // 각 k(=1,2,3)에 대한 load factor threshold L_k
+    // index 0은 사용 안 함
+    std::array<double, 4> load_factor_thr = {0.0, 0.1, 0.22, 0.73};
 
     // ------------- 서버에서 all_hashes 받기 ----------------
     std::vector<HashParams> all_hashes;
-
-    // 예전: all_hashes = generate_fixed_hash_functions(bins, 20); // 임시
-
-    all_hashes = recv_hash_params(wire);   // 서버가 보낸 20개 hash 파라미터 수신
+    all_hashes = recv_hash_params(wire);
     std::cout << "Received " << all_hashes.size()
-              << " hash functions from server.\n";
+            << " hash functions from server.\n";
 
+    // ------------- Adaptive selection + permutation-based cuckoo -------------
+    double load_factor = static_cast<double>(client_elems.size())
+                    / static_cast<double>(bins);
 
-    // ------------- permutation-based cuckoo table 구축 -------------
-    auto combs = get_combinations(20, hash_count);
+    std::optional<PermCuckooTable> p_cuckoo_table_opt;
+    std::vector<size_t> chosen_indices;
+    bool found = false;
+    size_t used_hash_count = 0;
 
     auto start_gen_cuc = high_resolution_clock::now();
-    auto build_result  = build_successful_p_cuckoo_table(
-        bins, threshold, r, combs, all_hashes, client_elems);
 
-    PermCuckooTable& p_cuckoo_table = build_result.table;
+    for (size_t k_star = 1; k_star <= hash_count; ++k_star)
+    {
+        double Lk = load_factor_thr[k_star];
+
+        // if |X|/B > L_k* then continue
+        if (load_factor > Lk) {
+            continue;
+        }
+
+        // 이 k_star 에 대해 가능한 hash 조합 생성
+        auto combs_k = get_combinations(all_hashes.size(), k_star);
+
+        // Permcuckoo(X, {H_1, ..., H_{k*}}, k*)
+        auto build_result_opt = build_successful_p_cuckoo_table(
+            bins, threshold, r, combs_k, all_hashes, client_elems);
+
+        // 이 k_star 에선 실패 → 다음 k_star 로
+        if (!build_result_opt.has_value()) {
+            continue;
+        }
+
+        // 여기까지 왔으면 성공한 조합을 찾았다는 뜻
+        auto& build_result = *build_result_opt;
+        p_cuckoo_table_opt.emplace(std::move(build_result.table));
+        chosen_indices = std::move(build_result.chosen_indices);
+        used_hash_count = k_star;
+        found = true;
+        break;
+    }
+
     auto end_gen_cuc = high_resolution_clock::now();
     auto us_gen_cuc  = duration_cast<microseconds>(end_gen_cuc - start_gen_cuc).count();
 
-    std::vector<size_t>& chosen_indices = build_result.chosen_indices;
+    if (!found) {
+        throw std::runtime_error(
+            "Adaptive PermCuckoo failed: no valid k* for given load factor");
+    }
 
     std::cout << "Cuckoo table generated in " << us_gen_cuc << " us\n";
+    std::cout << "Used hash count k* = " << used_hash_count << "\n";
     std::cout << "Chosen hash indices: ";
     for (auto idx : chosen_indices) std::cout << idx << " ";
     std::cout << std::endl;
 
-        // 1) chosen_hashes 추출
+    // 실제 테이블 참조 꺼내서 계속 사용
+    PermCuckooTable& p_cuckoo_table = *p_cuckoo_table_opt;
+
+    // 1) chosen_hashes 추출
     std::vector<HashParams> chosen_hashes;
     for (auto idx : chosen_indices)
         chosen_hashes.push_back(all_hashes[idx]);
 
-    // 2) 서버에 setup 정보 전송 (BFV parms, PK, chosen_hashes)
-    send_seal_obj(wire, parms);          // EncryptionParameters
-    send_seal_obj(wire, public_key);     // PublicKey
-    send_hash_params(wire, chosen_hashes); // vector<HashParams>
+    // 2) 서버에 setup 정보 전송
+    send_seal_obj(wire, parms);
+    send_seal_obj(wire, public_key);
+    send_hash_params(wire, chosen_hashes);
 
     // (원래 bytes_* 계산은 네트워크 통계용이었으니
     //  필요하면 여기서 따로 로그만 남기면 되고,

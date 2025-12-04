@@ -57,7 +57,7 @@ struct PermCuckooBuildResult {
     std::vector<size_t> chosen_indices;
 };
 
-PermCuckooBuildResult
+std::optional<PermCuckooBuildResult>
 build_successful_p_cuckoo_table(
     size_t bins,
     size_t threshold,
