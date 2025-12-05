@@ -26,7 +26,21 @@ cd src
 ./build.sh
 ```
 
-## 4. Evaluation
+## 4. Running PCPSI
+
+On the server machine, launch the server:
+
+```bash
+cd src/build
+./psi_server 9000
+```
+On the client machine, run the client by specifying the server’s IP address:
+```bash
+cd src/build
+./psi_client <server-ip> 9000
+```
+The client will connect to the server and execute the PSI protocol automatically.
+
 
 
 
