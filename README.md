@@ -7,10 +7,12 @@ This project is intended for research, experimentation, and performance evaluati
 
 ---
 
-## 📦 1. Clone the Repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/ehdwn95713/PCPSI.git
-cd PCPSI
-cd HE
 
+## 2. Install Microsoft SEAL Library
+```bash
+cd HE
+./install_seal.sh
