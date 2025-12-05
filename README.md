@@ -27,6 +27,7 @@ cd src
 ```
 
 ## 4. Running PCPSI
+The server and client communicate over TCP using port 9000.
 
 On the server machine, launch the server:
 
