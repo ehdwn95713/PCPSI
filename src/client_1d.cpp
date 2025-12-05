@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     BatchEncoder batch_encoder(context);
 
     // ------------- client data 생성/로드 ----------------
-    size_t client_size = 1 << 10;
+    size_t client_size = 1 << 2;
     std::string client_path = "data/data_file/client_data.txt";
 
     if (!std::filesystem::exists(client_path)) {
