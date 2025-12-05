@@ -11,8 +11,22 @@ This project is intended for research, experimentation, and performance evaluati
 
 ```bash
 git clone https://github.com/ehdwn95713/PCPSI.git
+```
 
 ## 2. Install Microsoft SEAL Library
 ```bash
 cd HE
 ./install_seal.sh
+```
+
+## 3. Build Protocol
+```bash
+cd ..
+cd src
+./build.sh
+```
+
+## 4. Evaluation
+
+
+
