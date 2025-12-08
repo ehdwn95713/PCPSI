@@ -25,15 +25,21 @@ int main(int argc, char** argv) {
     std::cout << "Client connected.\n";
 
     // ------------------ server data 생성/로드 ------------------
-    size_t server_size = 1 << 16;
-    std::string server_path = "data/data_file/server_data.txt";
+    int    server_exp  = 20;
+    size_t server_size = static_cast<size_t>(1) << server_exp;
+
+    std::filesystem::create_directories("data/data_file");
+    std::string server_path =
+        "data/data_file/server_data_" + std::to_string(server_exp) + ".txt";
 
     if (!std::filesystem::exists(server_path)) {
-        create_server_data(server_size);
-        std::cout << "Server data files created.\n";
+        create_server_data(server_size, server_exp);
+        std::cout << "Server data file created: " << server_path << "\n";
     } else {
-        std::cout << "Server data files already exist. Skipping generation.\n";
+        std::cout << "Server data file already exists. Reusing: "
+                << server_path << "\n";
     }
+
     auto server_elems = read_uint32_file(server_path);
     std::cout << "Loaded " << server_elems.size() << " server elements\n";
 

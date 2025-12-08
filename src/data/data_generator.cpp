@@ -32,12 +32,15 @@ void generate_unique_randoms(const std::string& filepath, size_t count) {
 }
 
 
-void create_client_data(size_t client_size) {
+// exp = log2(size) 
+void create_client_data(size_t client_size, int exp) {
     std::filesystem::create_directories("data/data_file");
-    generate_unique_randoms("data/data_file/client_data.txt", client_size);
+    std::string path = "data/data_file/client_data_" + std::to_string(exp) + ".txt";
+    generate_unique_randoms(path, client_size);
 }
 
-void create_server_data(size_t server_size) {
+void create_server_data(size_t server_size, int exp) {
     std::filesystem::create_directories("data/data_file");
-    generate_unique_randoms("data/data_file/server_data.txt", server_size);
+    std::string path = "data/data_file/server_data_" + std::to_string(exp) + ".txt";
+    generate_unique_randoms(path, server_size);
 }

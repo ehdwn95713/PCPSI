@@ -55,15 +55,24 @@ int main(int argc, char** argv) {
     BatchEncoder batch_encoder(context);
 
     // ------------- client data 생성/로드 ----------------
-    size_t client_size = 1 << 2;
-    std::string client_path = "data/data_file/client_data.txt";
+    // 2^client_exp 개 데이터 사용
+    int    client_exp  = 10;   // ← 여기만 바꾸면 됨 (예: 20이면 2^20개)
+    size_t client_size = static_cast<size_t>(1) << client_exp;
+
+    std::filesystem::create_directories("data/data_file");
+
+    // 파일 이름에 exp를 붙여서 크기별로 따로 관리
+    std::string client_path =
+        "data/data_file/client_data_" + std::to_string(client_exp) + ".txt";
 
     if (!std::filesystem::exists(client_path)) {
-        create_client_data(client_size);
-        std::cout << "Client data files created.\n";
+        create_client_data(client_size, client_exp);
+        std::cout << "Client data file created: " << client_path << "\n";
     } else {
-        std::cout << "Client data files already exist. Skipping generation.\n";
+        std::cout << "Client data file already exists. Reusing: "
+                << client_path << "\n";
     }
+
     auto client_elems = read_uint32_file(client_path);
     std::cout << "Loaded " << client_elems.size() << " client elements\n";
 
