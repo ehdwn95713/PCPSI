@@ -71,6 +71,12 @@ public:
     std::uint64_t send_time_us() const { return us_send_; }
     std::uint64_t recv_time_us() const { return us_recv_; }
 
+    void reset_stats() {
+        bytes_sent_ = 0;
+        bytes_recv_ = 0;
+        us_send_    = 0;
+        us_recv_    = 0;
+    }
 
 
     void send_raw(const uint8_t* data, size_t len) {

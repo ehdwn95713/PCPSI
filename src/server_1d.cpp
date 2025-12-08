@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
             << us_gen_sim << " us" << std::endl;
 
     // --- 클라이언트 쿼리 ciphertext 수신 ---
+    wire.reset_stats();
     seal::Ciphertext ct_all;
     recv_seal_obj(wire, ct_all, context);
     std::cout << "Received ct_all from client\n";

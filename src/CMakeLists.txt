@@ -146,3 +146,28 @@ target_link_libraries(psi_server_1d
     SEAL::seal
     socket_link
 )
+
+# ============================================================
+# [NEW] client_test : 통신 시간 측정용 클라이언트
+# ============================================================
+add_executable(client_test
+    client_test.cpp
+)
+
+target_link_libraries(client_test
+    SEAL::seal
+    socket_link
+)
+
+# ============================================================
+# [NEW] server_test : 통신 시간 측정용 서버
+# ============================================================
+add_executable(server_test
+    server_test.cpp
+)
+
+target_link_libraries(server_test
+    SEAL::seal
+    socket_link
+)
+

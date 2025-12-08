@@ -246,6 +246,7 @@ int main(int argc, char** argv) {
     total_us_enc+=us_enc;
 
     // send query
+    wire.reset_stats();
     send_seal_obj(wire, ct_all);
 
 
