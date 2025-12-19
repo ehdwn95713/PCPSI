@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     std::cout << "Loaded " << server_elems.size() << " server elements\n";
 
     // ------------------ 공통 파라미터 ------------------
-    int    log_poly_mod = 12;
+    int    log_poly_mod = 14;
     size_t log_bins     = log_poly_mod;
     size_t bins         = 1 << log_bins;
     size_t hash_count   = 3;
@@ -99,6 +99,15 @@ int main(int argc, char** argv) {
 
     std::cout << "Permutation simple tables generated in "
             << us_gen_sim << " us" << std::endl;
+
+    // ==== 통신 통계: preprocessing vs online 분리 ====
+    // 지금까지의 통신은 preprocessing 단계 (hash 20개 전송, parms/pk/ chosen_hashes 수신)
+    std::uint64_t pre_bytes_s2c = wire.bytes_sent(); // server -> client
+    std::uint64_t pre_bytes_c2s = wire.bytes_recv(); // client -> server
+    std::uint64_t pre_us_send   = wire.send_time_us();
+    std::uint64_t pre_us_recv   = wire.recv_time_us();
+
+
 
     // --- 클라이언트 쿼리 ciphertext 수신 ---
     wire.reset_stats();
@@ -214,20 +223,35 @@ int main(int argc, char** argv) {
     std::cout << "[server] TOTAL compare time = "
           << total_ms_comp << "\n";
 
-    double mb_s2c = wire.bytes_sent() / (1024.0 * 1024.0);
-    double mb_c2s = wire.bytes_recv() / (1024.0 * 1024.0);
+    // ==== 통신 통계 출력 ====
 
-    double ms_send = wire.send_time_us() / 1000.0;
-    double ms_recv = wire.recv_time_us() / 1000.0;
-    double ms_comm_total = ms_send + ms_recv;
+    // 1) preprocessing 단계
+    double pre_mb_s2c  = pre_bytes_s2c / (1024.0 * 1024.0);
+    double pre_mb_c2s  = pre_bytes_c2s / (1024.0 * 1024.0);
+    double pre_ms_send = pre_us_send / 1000.0;
+    double pre_ms_recv = pre_us_recv / 1000.0;
 
-    std::cout << "\n[server] bytes server->client: "
-              << wire.bytes_sent() << " B (" << mb_s2c << " MB)\n";
-    std::cout << "[server] bytes client->server: "
-              << wire.bytes_recv() << " B (" << mb_c2s << " MB)\n";
-    std::cout << "[server] time send: " << ms_send << " ms, "
-              << "recv: " << ms_recv << " ms, "
-              << "total comm time: " << ms_comm_total << " ms\n";
+    std::cout << "\n[server][preprocessing] bytes server->client: "
+              << pre_bytes_s2c << " B (" << pre_mb_s2c << " MB)\n";
+    std::cout << "[server][preprocessing] bytes client->server: "
+              << pre_bytes_c2s << " B (" << pre_mb_c2s << " MB)\n";
+    std::cout << "[server][preprocessing] time send: " << pre_ms_send << " ms, "
+              << "recv: " << pre_ms_recv << " ms, "
+              << "total comm time: " << (pre_ms_send + pre_ms_recv) << " ms\n";
+
+    // 2) online 단계 (reset 이후)
+    double online_mb_s2c  = wire.bytes_sent() / (1024.0 * 1024.0);
+    double online_mb_c2s  = wire.bytes_recv() / (1024.0 * 1024.0);
+    double online_ms_send = wire.send_time_us() / 1000.0;
+    double online_ms_recv = wire.recv_time_us() / 1000.0;
+
+    std::cout << "\n[server][online] bytes server->client: "
+              << wire.bytes_sent() << " B (" << online_mb_s2c << " MB)\n";
+    std::cout << "[server][online] bytes client->server: "
+              << wire.bytes_recv() << " B (" << online_mb_c2s << " MB)\n";
+    std::cout << "[server][online] time send: " << online_ms_send << " ms, "
+              << "recv: " << online_ms_recv << " ms, "
+              << "total comm time: " << (online_ms_send + online_ms_recv) << " ms\n";
 
 
 

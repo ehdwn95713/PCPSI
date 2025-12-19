@@ -76,54 +76,8 @@ int main(int argc, char** argv) {
     auto client_elems = read_uint32_file(client_path);
     std::cout << "Loaded " << client_elems.size() << " client elements\n";
 
-    // // ------------- 공통 파라미터 ----------------
-    // int    log_bins   = log_poly_mod;
-    // size_t bins       = 1 << log_bins;
-    // size_t hash_count = 3;
-    // size_t threshold  = 3000;
-    // size_t r          = 22 - log_bins;
-    
 
-    // // ------------- 서버에서 all_hashes 받기 ----------------
-    // std::vector<HashParams> all_hashes;
-
-    // // 예전: all_hashes = generate_fixed_hash_functions(bins, 20); // 임시
-
-    // all_hashes = recv_hash_params(wire);   // 서버가 보낸 20개 hash 파라미터 수신
-    // std::cout << "Received " << all_hashes.size()
-    //           << " hash functions from server.\n";
-
-
-    // // ------------- permutation-based cuckoo table 구축 -------------
-    // auto combs = get_combinations(20, hash_count);
-
-    // auto start_gen_cuc = high_resolution_clock::now();
-    // auto build_result  = build_successful_p_cuckoo_table(
-    //     bins, threshold, r, combs, all_hashes, client_elems);
-
-    // PermCuckooTable& p_cuckoo_table = build_result.table;
-    // auto end_gen_cuc = high_resolution_clock::now();
-    // auto us_gen_cuc  = duration_cast<microseconds>(end_gen_cuc - start_gen_cuc).count();
-
-    // std::vector<size_t>& chosen_indices = build_result.chosen_indices;
-
-    // std::cout << "Cuckoo table generated in " << us_gen_cuc << " us\n";
-    // std::cout << "Chosen hash indices: ";
-    // for (auto idx : chosen_indices) std::cout << idx << " ";
-    // std::cout << std::endl;
-
-    //     // 1) chosen_hashes 추출
-    // std::vector<HashParams> chosen_hashes;
-    // for (auto idx : chosen_indices)
-    //     chosen_hashes.push_back(all_hashes[idx]);
-
-    // // 2) 서버에 setup 정보 전송 (BFV parms, PK, chosen_hashes)
-    // send_seal_obj(wire, parms);          // EncryptionParameters
-    // send_seal_obj(wire, public_key);     // PublicKey
-    // send_hash_params(wire, chosen_hashes); // vector<HashParams>
-
-
-    // ------------- 공통 파라미터 ----------------
+    // ------------- common parameter ----------------
     int    log_bins   = log_poly_mod;
     size_t bins       = 1ULL << log_bins;
     size_t hash_count = 3;        // 최대 hash 개수 (k)
@@ -254,6 +208,14 @@ int main(int argc, char** argv) {
     auto us_enc = duration_cast<microseconds>(end_enc - start_enc).count();
     total_us_enc+=us_enc;
 
+    // ==== 통신 통계: preprocessing vs online 분리 ====
+    // 여기까지의 통신은 모두 preprocessing 단계
+    std::uint64_t pre_bytes_c2s = wire.bytes_sent();
+    std::uint64_t pre_bytes_s2c = wire.bytes_recv();
+    std::uint64_t pre_us_send   = wire.send_time_us();
+    std::uint64_t pre_us_recv   = wire.recv_time_us();
+
+
     // send query
     wire.reset_stats();
     send_seal_obj(wire, ct_all);
@@ -315,20 +277,34 @@ int main(int argc, char** argv) {
     cout << "latency(check intersection): " << total_us_check << " us (" << total_us_check / 1000.0 << " ms)" << endl;
 
     // ==== 통신 통계 출력 ====
-    double mb_c2s = wire.bytes_sent() / (1024.0 * 1024.0);
-    double mb_s2c = wire.bytes_recv() / (1024.0 * 1024.0);
 
-    double ms_send = wire.send_time_us() / 1000.0;
-    double ms_recv = wire.recv_time_us() / 1000.0;
-    double ms_comm_total = ms_send + ms_recv;
+    // 1) preprocessing 단계 (reset 이전까지)
+    double pre_mb_c2s  = pre_bytes_c2s / (1024.0 * 1024.0);
+    double pre_mb_s2c  = pre_bytes_s2c / (1024.0 * 1024.0);
+    double pre_ms_send = pre_us_send / 1000.0;
+    double pre_ms_recv = pre_us_recv / 1000.0;
 
-    std::cout << "\n[client] bytes client->server: "
-              << wire.bytes_sent() << " B (" << mb_c2s << " MB)\n";
-    std::cout << "[client] bytes server->client: "
-              << wire.bytes_recv() << " B (" << mb_s2c << " MB)\n";
-    std::cout << "[client] time send: " << ms_send << " ms, "
-              << "recv: " << ms_recv << " ms, "
-              << "total comm time: " << ms_comm_total << " ms\n";
+    std::cout << "\n[client][preprocessing] bytes client->server: "
+              << pre_bytes_c2s << " B (" << pre_mb_c2s << " MB)\n";
+    std::cout << "[client][preprocessing] bytes server->client: "
+              << pre_bytes_s2c << " B (" << pre_mb_s2c << " MB)\n";
+    std::cout << "[client][preprocessing] time send: " << pre_ms_send << " ms, "
+              << "recv: " << pre_ms_recv << " ms, "
+              << "total comm time: " << (pre_ms_send + pre_ms_recv) << " ms\n";
+
+    // 2) online 단계 (reset 이후 ~ 끝까지)
+    double online_mb_c2s  = wire.bytes_sent() / (1024.0 * 1024.0);
+    double online_mb_s2c  = wire.bytes_recv() / (1024.0 * 1024.0);
+    double online_ms_send = wire.send_time_us() / 1000.0;
+    double online_ms_recv = wire.recv_time_us() / 1000.0;
+
+    std::cout << "\n[client][online] bytes client->server: "
+              << wire.bytes_sent() << " B (" << online_mb_c2s << " MB)\n";
+    std::cout << "[client][online] bytes server->client: "
+              << wire.bytes_recv() << " B (" << online_mb_s2c << " MB)\n";
+    std::cout << "[client][online] time send: " << online_ms_send << " ms, "
+              << "recv: " << online_ms_recv << " ms, "
+              << "total comm time: " << (online_ms_send + online_ms_recv) << " ms\n";
 
 
 
